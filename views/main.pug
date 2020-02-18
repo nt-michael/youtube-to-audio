@@ -1,0 +1,115 @@
+extends index.pug
+block title
+    title A YouTube Audio Stream App
+block styles
+    style(type="text/css").
+            .vertical_align {
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+            }
+            .video_title {
+                font-size: .9em;
+                font-weight: 400;
+                margin-bottom:5px;
+            }
+            .video_desc {
+                font-size: .85em;
+            }
+    
+block body-content
+    .container
+        .row
+            .col-md-10.my-5.mx-auto.text-center.px-2.py-3
+                h5.mt-5.mb-3 No time to watch a Youtube Video?
+                h4 Stream to audio your favorite Youtube video while working, sounds good right? yeah!
+                .mt-5
+                    input(type="text", name="q", id="searchYoutube", class="form-control", placeholder="Start typing to search...", autocomplete="off", autofocus="true")
+                .pt-3
+    
+                    .p-3.mb-3#searchResult
+                    #pagination
+                        span
+                            a.prev(href='javascript:void(0);') Previous
+                        ||
+                        span
+                            a.next(href='javascript:void(0);') Next
+                    
+
+
+block scripts
+    script(type='text/javascript').
+        $(document).ready( () => {
+            //- console.log('hello there!!!');
+            $('#searchYoutube').keyup((e)=>{
+                if(e.keyCode === 13) {
+                    //console.log(`hey you just pressed enter hahaha\n${$('#searchYoutube').val()}`);
+                    $.ajax({
+                        type: 'POST',
+                        url:`/youtube-videos-search-api/${$('#searchYoutube').val().replace(/\s/g,'%20')}`,
+                        success: (data)=>{
+                            console.log(data.arrLength);
+                            var videos = data.success;
+                            var nextPageToken = data.nextPageToken;
+
+                            var allVideos = '';
+                            for(i=0; i<data.arrLength; i++) {
+                                allVideos += `<div class='row mb-2'>
+                                    <div class='col-md-3'><img src='${videos[i].videoThumbnailUrl}' alt='${videos[i].videoTitle}' style='width:100%''></div>
+                                    <div class='col-md-9 text-left vertical_align'><span class='video_title'><a href='javascript:void(0);' data-id='${videos[i].videoId}' data-title='${videos[i].videoTitle}' class="videoPlay" title='${videos[i].videoTitle}'>${videos[i].videoTitle}</a></span><span class='video_desc'>${videos[i].videoDesc}</span><audio controls><source src="/${videos[i].videoId}" type="audio/mpeg">Your browser does not support the audio element.</audio>
+                                    </div>
+                                </div>`;
+                            }
+                            $('#searchResult').html(allVideos);
+                            $('.prev').hide();
+                            (data.arrLength <= 1)? $('.next').hide():$('.next').show(()=>{
+                                $('.next').attr('next-page-token', nextPageToken)
+                            });
+                            
+                            //- console.log(`\n${searchResults[0]}`)
+                        }
+                    });
+                }
+            });
+
+            //- show next page
+            $('#pagination').on('click', '.next', function() {
+                    //console.log(`hey you just pressed enter hahaha\n${$('#searchYoutube').val()}`);
+                    var url=`/page/${$(this).attr('next-page-token')}/${$('#searchYoutube').val().replace(/\s/g,'%20')}`;
+                    console.log(url);
+                    $.ajax({
+                        type: 'POST',
+                        url:`/page/${$(this).attr('next-page-token')}/${$('#searchYoutube').val().replace(/\s/g,'%20')}`,
+                        success: (data)=>{
+                            console.log(data.success);
+                            var videos = data.success;
+                            var nextPageToken = data.nextPageToken;
+                            var allVideos = '';
+                            for(i=0; i<data.arrLength; i++) {
+                                allVideos += `<div class='row mb-2'>
+                                    <div class='col-md-3'><img src='${videos[i].videoThumbnailUrl}' alt='${videos[i].videoTitle}' style='width:100%''></div>
+                                    <div class='col-md-9 text-left vertical_align'><span class='video_title'><a href='javascript:void(0);' data-id='${videos[i].videoId}' data-title='${videos[i].videoTitle}' class="videoPlay" title='${videos[i].videoTitle}'>${videos[i].videoTitle}</a></span><span class='video_desc'>${videos[i].videoDesc}</span><audio controls><source src="/${videos[i].videoId}" type="audio/mpeg">Your browser does not support the audio element.</audio>
+                                    </div>
+                                </div>`;
+                            }
+                            $('#searchResult').html(allVideos);
+                            $('.prev').hide();
+                            $('.next').attr('next-page-token', nextPageToken);
+                            //- console.log(`\n${searchResults[0]}`)
+                        }
+                    });
+                
+            });
+
+            //- Video title onclick event to play audio
+           $('#searchResult').on('click', '.video_title a.videoPlay', function() {
+               console.log( $(this).attr('data-id') )
+               $.ajax ({
+                   type:'GET',
+                   url:`/${$(this).attr('data-id')}`,
+                   success: (data) => {
+                       console.log(`${$(this).attr('data-title')} is now playing`);
+                   }
+               });
+           });
+        });
